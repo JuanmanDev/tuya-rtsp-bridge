@@ -11,7 +11,7 @@ RUN go build -trimpath -ldflags="-s -w" -o /out/tuya-ipc-terminal .
 
 FROM python:3.12-slim-bookworm
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg ca-certificates \
+    && apt-get install -y --no-install-recommends ffmpeg ca-certificates procps \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 1000 --shell /usr/sbin/nologin bridge
 

@@ -169,11 +169,37 @@
           <label class="k" for="region">Server</label>
           <select id="region"></select>
         </div>
-        <div class="qr-wrap" id="qrBox"><div class="ph">No QR</div></div>
-        <p class="hint" id="hint">Smart Life: <strong>scan</strong>, then confirm.</p>
-        <div class="actions">
-          <button class="pri" id="btnQr">Create QR</button>
-          <button class="ghost" id="btnOut">Sign out</button>
+        <div id="loginModes" style="display:flex;gap:4px;">
+            <button id="modeQrBtn" class="pri" style="flex:1;">QR Code</button>
+            <button id="modeEmailBtn" class="ghost" style="flex:1;">Email</button>
+        </div>
+        <div id="qrFlow" style="display:flex;flex-direction:column;gap:16px;">
+            <div class="qr-wrap" id="qrBox"><div class="ph">No QR</div></div>
+            <p class="hint" id="hint">Smart Life: <strong>scan</strong>, then confirm.</p>
+            <div class="actions">
+              <button class="pri" id="btnQr">Create QR</button>
+              <button class="ghost" id="btnOutQr">Sign out</button>
+            </div>
+        </div>
+        <div id="emailFlow" style="display:none;flex-direction:column;gap:12px;">
+            <div>
+                <label class="k" for="emailInput">Email</label>
+                <input id="emailInput" type="email" style="width:100%;background:#0e140e;border:1px solid var(--line);min-height:var(--hit);padding:0 10px;color:var(--ink);">
+            </div>
+            <div>
+                <label class="k" for="passwordInput">Password</label>
+                <input id="passwordInput" type="password" style="width:100%;background:#0e140e;border:1px solid var(--line);min-height:var(--hit);padding:0 10px;color:var(--ink);">
+            </div>
+            <div>
+                <label class="k" for="countryInput">Country Code</label>
+                <input id="countryInput" type="text" value="34" style="width:100%;background:#0e140e;border:1px solid var(--line);min-height:var(--hit);padding:0 10px;color:var(--ink);">
+            </div>
+            <label class="sw" style="border:none;min-height:0;padding:0;margin-top:4px;"><input type="checkbox" id="autoRenewCheck" checked><div class="t" style="font-weight:normal;color:var(--dim);">Auto-renew session</div></label>
+            <div class="actions" style="margin-top:4px;display:flex;gap:8px;">
+                <button class="pri" id="btnEmailLogin" style="flex:1;">Sign In</button>
+                <button class="ghost" id="btnOutEmail" style="flex:1;display:none;">Sign out</button>
+            </div>
+            <p class="hint" id="emailHint" style="color:var(--bad);display:none;word-break:break-word;"></p>
         </div>
         <div class="user" id="userBox" hidden>
           <div class="n" id="userName"></div>
@@ -377,14 +403,60 @@
     ["fRtsp","fWd","fHls","fArch"].forEach(id => {
       $(id).onchange = () => setFlags();
     });
+    $("modeQrBtn").onclick = () => {
+      $("modeQrBtn").className = "pri";
+      $("modeEmailBtn").className = "ghost";
+      $("qrFlow").style.display = "flex";
+      $("emailFlow").style.display = "none";
+    };
+    $("modeEmailBtn").onclick = () => {
+      $("modeEmailBtn").className = "pri";
+      $("modeQrBtn").className = "ghost";
+      $("qrFlow").style.display = "none";
+      $("emailFlow").style.display = "flex";
+    };
+    
+    $("btnEmailLogin").onclick = async () => {
+      const email = $("emailInput").value.trim();
+      const password = $("passwordInput").value;
+      const countryCode = $("countryInput").value.trim();
+      const autoRenew = $("autoRenewCheck").checked;
+      
+      if (!email || !password) {
+        $("emailHint").style.display = "block";
+        $("emailHint").textContent = "Email and password required.";
+        return;
+      }
+      
+      $("btnEmailLogin").disabled = true;
+      $("emailHint").style.display = "none";
+      
+      try {
+        render(await api("/api/login/password", { email, password, countryCode, autoRenew }));
+      } catch (e) {
+        $("emailHint").style.display = "block";
+        $("emailHint").textContent = e.message;
+      } finally {
+        $("btnEmailLogin").disabled = false;
+      }
+    };
+
     $("btnQr").onclick = async () => {
       lastQrId = "";
       render(await api("/api/qr/start", { region: $("region").value }));
     };
-    $("btnOut").onclick = async () => {
+    
+    const signOut = async () => {
       lastQrId = "";
+      $("emailInput").value = "";
+      $("passwordInput").value = "";
+      $("emailHint").style.display = "none";
       render(await api("/api/logout", {}));
     };
+    
+    $("btnOutQr").onclick = signOut;
+    $("btnOutEmail").onclick = signOut;
+    
     $("btnRefresh").onclick = async () => render(await api("/api/cameras/refresh", {}));
     $("btnYaml").onclick = () => navigator.clipboard.writeText(yamlText);
     $("btnRstRtsp").onclick = async () => render(await api("/api/restart/rtsp", {}));
@@ -392,8 +464,15 @@
     $("btnRstAll").onclick = async () => { await api("/api/restart/all", {}); };
 
     async function tick() {
-      try { render(await api("/api/state")); }
-      catch (e) { chip($("phaseChip"), e.message, "bad"); }
+      try {
+        const s = await api("/api/state");
+        render(s);
+        if (s.loggedIn) {
+            $("btnOutEmail").style.display = "block";
+        } else {
+            $("btnOutEmail").style.display = "none";
+        }
+      } catch (e) { chip($("phaseChip"), e.message, "bad"); }
     }
     tick();
     setInterval(tick, 1500);

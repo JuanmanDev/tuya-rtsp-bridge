@@ -61,11 +61,32 @@ def pids_matching(needle: str) -> list[int]:
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
             return []
         return [int(p) for p in raw.split() if p.isdigit() and int(p) > 4 and int(p) != me]
+    
+    pids = []
     try:
         raw = subprocess.check_output(["pgrep", "-f", needle], text=True, timeout=8)
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError, OSError):
-        return []
-    return [int(p) for p in raw.split() if p.isdigit() and int(p) != me]
+        pids = [int(p) for p in raw.split() if p.isdigit() and int(p) != me]
+        if pids:
+            return pids
+    except Exception:
+        pass
+        
+    try:
+        for d in os.listdir("/proc"):
+            if d.isdigit():
+                pid = int(d)
+                if pid != me:
+                    try:
+                        with open(f"/proc/{pid}/cmdline", "r", encoding="utf-8") as f:
+                            cmdline = f.read().replace("\x00", " ")
+                            if needle in cmdline:
+                                pids.append(pid)
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+        
+    return pids
 
 
 def kill_pids(pids: list[int]) -> None:
@@ -91,5 +112,8 @@ def kill_engine() -> None:
             creationflags=creationflags(),
         )
         return
-    subprocess.run(["pkill", "-f", "tuya-ipc-terminal"], capture_output=True)
+    try:
+        subprocess.run(["pkill", "-f", "tuya-ipc-terminal"], capture_output=True)
+    except FileNotFoundError:
+        pass
     kill_pids(pids_matching("tuya-ipc-terminal"))

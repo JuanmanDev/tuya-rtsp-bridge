@@ -203,22 +203,31 @@ class TuyaClient:
             timeout=30,
         )
         # Auto-relogin once on expired protect session when cloud_auth password exists.
-        if resp.status_code in (401, 403) or (
-            resp.status_code == 200
-            and "USER_SESSION_INVALID" in (resp.text or "")
-        ):
-            if self._try_password_relogin():
-                resp = self.session.post(
-                    self._url(path),
-                    data=data,
-                    headers=self._headers(referer),
-                    timeout=30,
-                )
+        text_body = resp.text or ""
+        is_session_err = (
+            resp.status_code in (401, 403)
+            or "USER_SESSION_INVALID" in text_body
+            or "USER_SESSION_LOSS" in text_body
+            or "Not login" in text_body
+        )
+        if is_session_err and self._try_password_relogin():
+            resp = self.session.post(
+                self._url(path),
+                data=data,
+                headers=self._headers(referer),
+                timeout=30,
+            )
         resp.raise_for_status()
         body = resp.json()
         if not body.get("success"):
             msg = body.get("errorMsg") or body.get("msg") or "Tuya-API-Fehler"
-            if "USER_SESSION_INVALID" in str(msg) and self._try_password_relogin():
+            err_code = body.get("errorCode") or ""
+            is_body_session_err = (
+                "USER_SESSION" in str(msg)
+                or "USER_SESSION" in str(err_code)
+                or "Not login" in str(msg)
+            )
+            if is_body_session_err and self._try_password_relogin():
                 resp = self.session.post(
                     self._url(path),
                     data=data,
@@ -310,6 +319,15 @@ class TuyaClient:
         self.token = None
         self.save_session()
         return login
+
+    def login_with_password(self, email: str, password: str, country_code: str = "34", auto_renew: bool = False) -> dict:
+        login_result = self.password_login(email, password, country_code)
+        if auto_renew:
+            data = {"email": email, "password": password, "countryCode": country_code}
+            self._cloud_auth_path().write_text(json.dumps(data, indent=2), encoding="utf-8")
+        else:
+            self._cloud_auth_path().unlink(missing_ok=True)
+        return login_result
 
     def _try_password_relogin(self) -> bool:
         email, password, country = self._load_cloud_password()

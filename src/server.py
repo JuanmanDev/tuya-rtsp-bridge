@@ -280,22 +280,28 @@ class Handler(SimpleHTTPRequestHandler):
             pass
 
     def _json(self, code: int, payload) -> None:
-        raw = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        self.send_response(code)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Cache-Control", "no-store")
-        self.send_header("Content-Length", str(len(raw)))
-        self.end_headers()
-        self.wfile.write(raw)
+        try:
+            raw = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+            self.send_response(code)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(raw)))
+            self.end_headers()
+            self.wfile.write(raw)
+        except (BrokenPipeError, ConnectionAbortedError):
+            pass
 
     def _text(self, code: int, text: str, ctype: str) -> None:
-        raw = text.encode("utf-8")
-        self.send_response(code)
-        self.send_header("Content-Type", ctype)
-        self.send_header("Cache-Control", "no-store")
-        self.send_header("Content-Length", str(len(raw)))
-        self.end_headers()
-        self.wfile.write(raw)
+        try:
+            raw = text.encode("utf-8")
+            self.send_response(code)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(raw)))
+            self.end_headers()
+            self.wfile.write(raw)
+        except (BrokenPipeError, ConnectionAbortedError):
+            pass
 
     def _read_json(self) -> dict:
         n = int(self.headers.get("Content-Length") or 0)
@@ -304,40 +310,65 @@ class Handler(SimpleHTTPRequestHandler):
         return json.loads(self.rfile.read(n).decode("utf-8") or "{}")
 
     def do_GET(self) -> None:
-        path = urlparse(self.path).path
-        if path in ("/", "/index.html"):
-            html = (WEB / "index.html").read_bytes()
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("Cache-Control", "no-store")
-            self.send_header("Content-Length", str(len(html)))
-            self.end_headers()
-            self.wfile.write(html)
-            return
-        if path == "/api/state":
-            self._json(200, public_state())
-            return
-        if path == "/api/qr.png":
-            if not client.token:
-                self.send_error(404, "Kein QR")
+        try:
+            path = urlparse(self.path).path
+            if path in ("/", "/index.html"):
+                html = (WEB / "index.html").read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Content-Length", str(len(html)))
+                self.end_headers()
+                self.wfile.write(html)
                 return
-            png = qr_png_bytes()
-            self.send_response(200)
-            self.send_header("Content-Type", "image/png")
-            self.send_header("Cache-Control", "no-store")
-            self.send_header("Content-Length", str(len(png)))
-            self.end_headers()
-            self.wfile.write(png)
-            return
-        if path == "/api/frigate.yaml":
-            self._text(200, frigate_yaml(public_state()), "text/yaml; charset=utf-8")
-            return
-        return super().do_GET()
+            if path == "/api/state":
+                self._json(200, public_state())
+                return
+            if path == "/api/qr.png":
+                if not client.token:
+                    self.send_error(404, "Kein QR")
+                    return
+                png = qr_png_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "image/png")
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Content-Length", str(len(png)))
+                self.end_headers()
+                self.wfile.write(png)
+                return
+            if path == "/api/frigate.yaml":
+                self._text(200, frigate_yaml(public_state()), "text/yaml; charset=utf-8")
+                return
+            return super().do_GET()
+        except (BrokenPipeError, ConnectionAbortedError):
+            pass
 
     def do_POST(self) -> None:
         path = urlparse(self.path).path
         try:
             body = self._read_json()
+            if path == "/api/login/password":
+                email = body.get("email", "").strip()
+                password = body.get("password", "")
+                country_code = str(body.get("countryCode") or "34")
+                auto_renew = bool(body.get("autoRenew"))
+                try:
+                    client.login_with_password(email, password, country_code, auto_renew)
+                    cams = client.discover_cameras()
+                    set_phase("logged_in", f"{len(cams)} Kamera(s) gefunden.")
+                    try:
+                        rtsp.start()
+                        apply_service_flags(services.load_flags())
+                        set_phase("logged_in", f"{len(cams)} Kamera(s) · RTSP :{rtsp.port}")
+                        local_ptz.warmup([c.get("deviceId") for c in cams if c.get("deviceId")])
+                    except Exception as exc:
+                        set_phase("logged_in", f"{len(cams)} Kamera(s). RTSP: {exc}")
+                    self._json(200, public_state())
+                except Exception as exc:
+                    set_phase("error", str(exc))
+                    self._json(500, {"error": str(exc)})
+                return
+            
             if path == "/api/ptz/move":
                 device_id = body.get("deviceId")
                 direction = body.get("direction")
@@ -484,21 +515,25 @@ def main() -> None:
     _attach_file_log()
     WEB.mkdir(parents=True, exist_ok=True)
     if client.login:
+        cams = client.cameras
         try:
             # Always discover cameras when session is loaded
             cams = client.discover_cameras()
             set_phase("logged_in", f"{len(cams)} Kamera(s) gefunden.")
             client.cameras = cams
-            if cams:
-                try:
-                    rtsp.start()
-                    apply_service_flags(services.load_flags())
-                    set_phase("logged_in", f"{len(cams)} Kamera(s) · RTSP :{rtsp.port}")
-                    local_ptz.warmup([c.get("deviceId") for c in cams if c.get("deviceId")])
-                except Exception as exc:
-                    set_phase("logged_in", f"{len(cams)} Kamera(s). RTSP: {exc}")
         except Exception as exc:
-            set_phase("logged_in", f"Sitzung geladen. Kamerasuche: {exc}")
+            set_phase("error", f"Sitzung geladen. Kamerasuche: {exc}")
+            
+        if cams:
+            try:
+                rtsp.start()
+                apply_service_flags(services.load_flags())
+                if ui_state["phase"] != "error":
+                    set_phase("logged_in", f"{len(cams)} Kamera(s) · RTSP :{rtsp.port}")
+                local_ptz.warmup([c.get("deviceId") for c in cams if c.get("deviceId")])
+            except Exception as exc:
+                if ui_state["phase"] != "error":
+                    set_phase("logged_in", f"{len(cams)} Kamera(s). RTSP: {exc}")
 
     httpd = ThreadingHTTPServer((HOST, PORT), Handler)
     print(f"Tuya-Brücke: http://127.0.0.1:{PORT}  (PTZ=LAN-DP 119)")
