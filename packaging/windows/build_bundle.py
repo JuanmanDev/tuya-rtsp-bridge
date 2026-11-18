@@ -32,7 +32,7 @@ VLC_URL = "https://download.videolan.org/pub/videolan/vlc/3.0.21/win64/vlc-3.0.2
 FFMPEG_URL = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
 ISCC = Path(r"C:\Program Files (x86)\Inno Setup 6\ISCC.exe")
 
-UA = "tuya-rtsp-bridge-bundle/1.2 (+https://github.com/DanEng1982/tuya-rtsp-bridge)"
+UA = "tuya-rtsp-bridge-bundle/1.2 (+https://github.com/JuanmanDev/tuya-rtsp-bridge)"
 
 
 def log(msg: str) -> None:
@@ -175,7 +175,7 @@ def verify(py: Path) -> None:
     env["PATH"] = str(VLC_DIR) + os.pathsep + str(BIN) + os.pathsep + env.get("PATH", "")
     env["VLC_PLUGIN_PATH"] = str(VLC_DIR / "plugins")
     code = (
-        "import tkinter, requests, qrcode, PIL, tinytuya, vlc; "
+        "import tkinter, requests, qrcode, PIL, tinytuya, cryptography, vlc; "
         "print('imports-ok', tkinter.TkVersion)"
     )
     subprocess.run([str(py), "-c", code], check=True, env=env, timeout=60)

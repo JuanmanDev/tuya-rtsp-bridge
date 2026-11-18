@@ -1,0 +1,111 @@
+name: Docker
+
+# Publishes to GitHub Container Registry:
+#   ghcr.io/<owner>/tuya-rtsp-bridge                 multi-arch (amd64, arm64) — docker compose
+#   ghcr.io/<owner>/tuya-rtsp-bridge-addon-<arch>    Home Assistant add-on images (amd64, aarch64)
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Lowercase owner
+        run: echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/tuya-rtsp-bridge
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,format=short
+            type=ref,event=pr
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: APP_VERSION=${{ steps.meta.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  addon:
+    # The add-on Dockerfile clones the repo from GitHub, so only build what is already pushed.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+          - arch: aarch64
+            platform: linux/arm64
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read add-on version
+        run: |
+          echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+          echo "ADDON_VERSION=$(sed -n 's/^version: *"\{0,1\}\([^"]*\)"\{0,1\}/\1/p' homeassistant/tuya_rtsp_bridge/config.yaml)" >> "$GITHUB_ENV"
+
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: homeassistant/tuya_rtsp_bridge
+          platforms: ${{ matrix.platform }}
+          push: true
+          provenance: false
+          build-args: |
+            BUILD_FROM=ghcr.io/home-assistant/${{ matrix.arch }}-base-debian:trixie
+            REPO_URL=https://github.com/${{ github.repository }}.git
+            REPO_REF=${{ github.ref_name }}
+            APP_VERSION=${{ env.ADDON_VERSION }}-${{ github.sha }}
+          labels: |
+            io.hass.type=addon
+            io.hass.arch=${{ matrix.arch }}
+            io.hass.version=${{ env.ADDON_VERSION }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/tuya-rtsp-bridge-addon-${{ matrix.arch }}:${{ env.ADDON_VERSION }}
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/tuya-rtsp-bridge-addon-${{ matrix.arch }}:latest
+          cache-from: type=gha,scope=addon-${{ matrix.arch }}
+          cache-to: type=gha,scope=addon-${{ matrix.arch }},mode=max

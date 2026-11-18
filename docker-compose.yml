@@ -1,14 +1,15 @@
 # Linux / HA OS / homelab — host network so camera LAN-UDP and PTZ reach the box.
 # Windows / Docker Desktop: use docker-compose.ports.yml instead.
 #
-#   docker compose up -d --build
-#   open http://<this-host>:8787  → Create QR → confirm in Smart Life
+#   docker compose up -d                 # pulls the prebuilt image from GHCR
+#   docker compose up -d --build         # or build locally from this checkout
+#   open http://<this-host>:8787  → Create QR (or Email) → confirm in Smart Life
 #   then  rtsp://<this-host>:8554/<CameraName>/hd
 
 services:
   tuya-rtsp-bridge:
+    image: ghcr.io/juanmandev/tuya-rtsp-bridge:latest
     build: .
-    image: tuya-rtsp-bridge:local
     container_name: tuya-rtsp-bridge
     restart: unless-stopped
     network_mode: host

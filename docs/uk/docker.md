@@ -4,7 +4,7 @@ Headless: web UI `:8787` + RTSP `:8554`. Sessions in `./data` + `./config` (neve
 
 ## Linux / HA host
 ```bash
-git clone https://github.com/DanEng1982/tuya-rtsp-bridge.git
+git clone https://github.com/JuanmanDev/tuya-rtsp-bridge.git
 cd tuya-rtsp-bridge
 docker compose up -d --build
 ```

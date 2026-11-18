@@ -53,7 +53,7 @@ Generic camera or go2rtc add-on with the same RTSP URL. Still no ONVIF.
 On the HA host (Linux), the bridge can run next to Frigate:
 
 ```bash
-git clone https://github.com/DanEng1982/tuya-rtsp-bridge.git
+git clone https://github.com/JuanmanDev/tuya-rtsp-bridge.git
 cd tuya-rtsp-bridge
 docker compose up -d --build
 ```

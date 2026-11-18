@@ -9,7 +9,7 @@ Session-Dateien in `./data` und `./config` neben der Compose-Datei — nie im Im
 Host-Networking lässt die Engine mit Kameras im LAN sprechen (WebRTC/UDP + PTZ TCP 6668).
 
 ```bash
-git clone https://github.com/DanEng1982/tuya-rtsp-bridge.git
+git clone https://github.com/JuanmanDev/tuya-rtsp-bridge.git
 cd tuya-rtsp-bridge
 docker compose up -d --build
 ```
@@ -26,7 +26,7 @@ rtsp://<dieser-host>:8554/<CameraName>/hd
 
 Supervisor-Add-on: [`homeassistant/tuya_rtsp_bridge/`](../../homeassistant/tuya_rtsp_bridge/).
 
-1. Repo auf dem HA-Host clonen **oder** `https://github.com/DanEng1982/tuya-rtsp-bridge` (Unterordner `homeassistant`) als Custom-Add-on-Repo via `repository.json`
+1. Repo auf dem HA-Host clonen **oder** `https://github.com/JuanmanDev/tuya-rtsp-bridge` (Unterordner `homeassistant`) als Custom-Add-on-Repo via `repository.json`
 2. ggf. **Einstellungen → Add-ons → Add-on-Store → ⋮ → Repositories**
 3. **Tuya RTSP Bridge** installieren → Start
 4. `http://<ha-host>:8787` für QR-Login

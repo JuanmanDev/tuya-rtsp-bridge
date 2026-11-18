@@ -2,13 +2,13 @@
 # Pull app sources from GitHub at build time (or override REPO_REF).
 # syntax=docker/dockerfile:1
 
-ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-debian:bookworm
-ARG REPO_URL=https://github.com/DanEng1982/tuya-rtsp-bridge.git
+ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-debian:trixie
+ARG REPO_URL=https://github.com/JuanmanDev/tuya-rtsp-bridge.git
 ARG REPO_REF=main
 # Bump APP_VERSION on every release so Docker does not reuse a stale git clone.
-ARG APP_VERSION=1.2.6
+ARG APP_VERSION=1.3.0
 
-FROM golang:1.23-bookworm AS engine
+FROM golang:1.27-trixie AS engine
 ARG REPO_URL
 ARG REPO_REF
 ARG APP_VERSION
@@ -27,7 +27,7 @@ ARG APP_VERSION
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        ca-certificates curl ffmpeg git python3 python3-pip \
+        ca-certificates curl ffmpeg git procps python3 python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

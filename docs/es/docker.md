@@ -3,7 +3,7 @@
 Headless `:8787` + `:8554`. Sesiones en `./data` y `./config`.
 
 ```bash
-git clone https://github.com/DanEng1982/tuya-rtsp-bridge.git
+git clone https://github.com/JuanmanDev/tuya-rtsp-bridge.git
 cd tuya-rtsp-bridge
 docker compose up -d --build
 ```

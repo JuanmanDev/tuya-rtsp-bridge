@@ -8,7 +8,7 @@ Sessies in `./data` en `./config` naast compose — nooit in het image.
 Host-networking voor LAN (WebRTC/UDP + PTZ TCP 6668).
 
 ```bash
-git clone https://github.com/DanEng1982/tuya-rtsp-bridge.git
+git clone https://github.com/JuanmanDev/tuya-rtsp-bridge.git
 cd tuya-rtsp-bridge
 docker compose up -d --build
 ```

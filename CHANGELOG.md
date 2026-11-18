@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.3.0 (fork: JuanmanDev/tuya-rtsp-bridge)
+
+Fork of [DanEng1982/tuya-rtsp-bridge](https://github.com/DanEng1982/tuya-rtsp-bridge) — upstream [PR #4](https://github.com/DanEng1982/tuya-rtsp-bridge/pull/4) was not merged.
+
+- Email / password login (`POST /api/login/password`) next to QR, with optional **auto-renew** on `USER_SESSION_LOSS` / `USER_SESSION_INVALID` (fixes streams dying after Tuya's 72 h session)
+- Startup falls back to cached camera list if cloud discovery fails; `/proc` fallback when `pgrep` / `pkill` are missing; `procps` in images
+- New login strings translated for all 18 UI languages
+- `cryptography` added to requirements (password login needed it but it was missing)
+- Docker: prebuilt multi-arch images on GHCR (`ghcr.io/juanmandev/tuya-rtsp-bridge`, amd64 + arm64), engine cross-compiled
+- Docker: entrypoint chowns `/data` and `/config` then drops to uid 1000 (`PUID` / `PGID`) — fixes `PermissionError` with fresh bind mounts on Linux
+- HA add-on: prebuilt images (`ghcr.io/juanmandev/tuya-rtsp-bridge-addon-{arch}`), Debian trixie base; armv7 dropped (no Pillow wheels; HA dropped 32-bit)
+- Updated: Go 1.27 (module needs 1.26+), pion/webrtc 4.2.26, x/net 0.63, Python 3.14, requests 2.34, pillow 13, tinytuya 1.21, cryptography 50, python-vlc 3.0.21203
+- CI: runs all tests + engine build; GitHub Actions bumped to current majors
+
 ## 1.2.6
 
 - HA add-on: bust Docker git-clone cache (stale 1.2.4 image after “update”)

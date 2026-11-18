@@ -1,12 +1,13 @@
 # Use this on Docker Desktop (Windows/macOS) where network_mode: host does not work.
 # PTZ and some camera UDP paths are more reliable with the host-network file on Linux.
 #
-#   docker compose -f docker-compose.ports.yml up -d --build
+#   docker compose -f docker-compose.ports.yml up -d            # prebuilt image
+#   docker compose -f docker-compose.ports.yml up -d --build    # local build
 
 services:
   tuya-rtsp-bridge:
     build: .
-    image: tuya-rtsp-bridge:local
+    image: ghcr.io/juanmandev/tuya-rtsp-bridge:latest
     container_name: tuya-rtsp-bridge
     restart: unless-stopped
     ports:

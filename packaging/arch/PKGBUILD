@@ -1,5 +1,6 @@
-# Maintainer: DanEng1982 <DanEng1982@users.noreply.github.com>
-# Arch / Garuda / Manjaro package for https://github.com/DanEng1982/tuya-rtsp-bridge
+# Maintainer: JuanmanDev <JuanmanDev@users.noreply.github.com>
+# Contributor: DanEng1982 <DanEng1982@users.noreply.github.com>
+# Arch / Garuda / Manjaro package for https://github.com/JuanmanDev/tuya-rtsp-bridge
 #
 # In-tree (recommended while developing packaging):
 #   cd packaging/arch && makepkg -si
@@ -12,7 +13,7 @@ pkgver=1.2.3
 pkgrel=1
 pkgdesc='Local RTSP for Tuya / Smart Life cameras (QR login → Frigate, Agent DVR, go2rtc)'
 arch=('x86_64' 'aarch64')
-url='https://github.com/DanEng1982/tuya-rtsp-bridge'
+url='https://github.com/JuanmanDev/tuya-rtsp-bridge'
 license=('MIT')
 depends=(
   'python'
@@ -40,7 +41,7 @@ _repo="$(realpath "${startdir}/../..")"
 _release_tarball_sum='8e37832546a6730d812b1a1d83bf52929270bccd870c1d54fc57acbe85b3779b'
 
 if [[ "${RELEASE:-0}" == "1" ]]; then
-  source=("$pkgname-$pkgver.tar.gz::https://github.com/DanEng1982/tuya-rtsp-bridge/archive/refs/tags/v$pkgver.tar.gz")
+  source=("$pkgname-$pkgver.tar.gz::https://github.com/JuanmanDev/tuya-rtsp-bridge/archive/refs/tags/v$pkgver.tar.gz")
   sha256sums=("$_release_tarball_sum")
 else
   # Snapshot of the live checkout (includes uncommitted packaging edits).
@@ -84,10 +85,10 @@ prepare() {
   "$py" -m pip download \
     --dest "$srcdir/wheels" \
     --only-binary=:all: \
-    tinytuya 'python-vlc>=3.0.20123' 2>/dev/null \
+    tinytuya 'python-vlc>=3.0.21203' 2>/dev/null \
   || "$py" -m pip download \
     --dest "$srcdir/wheels" \
-    tinytuya 'python-vlc>=3.0.20123'
+    tinytuya 'python-vlc>=3.0.21203'
 }
 
 build() {

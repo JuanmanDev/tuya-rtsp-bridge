@@ -18,6 +18,7 @@ See `NOTICE.md` (full legal text) and `vendor/tuya-ipc-terminal/LICENSE`.
 | qrcode | BSD-3-Clause | Login QR |
 | pillow | HPND-like (PIL) | QR + images |
 | tinytuya | MIT | Local PTZ (TCP 6668) |
+| cryptography | Apache-2.0 / BSD-3-Clause | RSA password encryption for email login |
 | python-vlc | LGPL-2.1+ | Live preview HWND |
 
 ## Windows Setup.exe (v1.2+) redistributes

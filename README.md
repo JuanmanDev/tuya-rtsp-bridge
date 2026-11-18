@@ -5,11 +5,17 @@
 </p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![CI](https://github.com/DanEng1982/tuya-rtsp-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/DanEng1982/tuya-rtsp-bridge/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/DanEng1982/tuya-rtsp-bridge)](https://github.com/DanEng1982/tuya-rtsp-bridge/releases)
-[![GitHub stars](https://img.shields.io/github/stars/DanEng1982/tuya-rtsp-bridge?style=social)](https://github.com/DanEng1982/tuya-rtsp-bridge/stargazers)
-[![GitHub issues](https://img.shields.io/github/issues/DanEng1982/tuya-rtsp-bridge)](https://github.com/DanEng1982/tuya-rtsp-bridge/issues)
+[![CI](https://github.com/JuanmanDev/tuya-rtsp-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/JuanmanDev/tuya-rtsp-bridge/actions/workflows/ci.yml)
+[![Docker](https://github.com/JuanmanDev/tuya-rtsp-bridge/actions/workflows/docker.yml/badge.svg)](https://github.com/JuanmanDev/tuya-rtsp-bridge/pkgs/container/tuya-rtsp-bridge)
+[![Fork of DanEng1982/tuya-rtsp-bridge](https://img.shields.io/badge/fork%20of-DanEng1982%2Ftuya--rtsp--bridge-blue)](https://github.com/DanEng1982/tuya-rtsp-bridge)
+[![GitHub stars](https://img.shields.io/github/stars/JuanmanDev/tuya-rtsp-bridge?style=social)](https://github.com/JuanmanDev/tuya-rtsp-bridge/stargazers)
+[![GitHub issues](https://img.shields.io/github/issues/JuanmanDev/tuya-rtsp-bridge)](https://github.com/JuanmanDev/tuya-rtsp-bridge/issues)
 [![English](README.md)](README.md) [![Deutsch](README.de.md)](README.de.md) [![Nederlands](README.nl.md)](README.nl.md) [![Français](README.fr.md)](README.fr.md) [![Español](README.es.md)](README.es.md) [![Português](README.pt.md)](README.pt.md) [![Italiano](README.it.md)](README.it.md) [![Polski](README.pl.md)](README.pl.md) [![Čeština](README.cs.md)](README.cs.md) [![Русский](README.ru.md)](README.ru.md) [![Українська](README.uk.md)](README.uk.md) [![Bahasa Indonesia](README.id.md)](README.id.md) [![简体中文](README.zh.md)](README.zh.md) [![हिन्दी](README.hi.md)](README.hi.md) [![日本語](README.ja.md)](README.ja.md) [![한국어](README.ko.md)](README.ko.md) [![עברית](README.he.md)](README.he.md) [![ייִדיש](README.yi.md)](README.yi.md)
+
+> [!NOTE]
+> **This is a maintained fork** of **[DanEng1982/tuya-rtsp-bridge](https://github.com/DanEng1982/tuya-rtsp-bridge)** by **[@DanEng1982](https://github.com/DanEng1982)**, who created this project — the original design, UI, docs and packaging are theirs.
+> The fork exists because [PR #4](https://github.com/DanEng1982/tuya-rtsp-bridge/pull/4) (email/password login + session auto-renew, fixing the **72-hour stream dropout**) has not been merged upstream.
+> If upstream becomes active again, these changes are offered back there first.
 
 **Turn any Tuya / Smart Life / iSmartLife camera into a normal RTSP camera** — so Frigate, Agent DVR, go2rtc, Home Assistant, or VLC can use it.
 
@@ -37,7 +43,18 @@ rtsp://<this-pc>:8554/<CameraName>/hd
 
 Signaling still uses Tuya. When you watch from this PC, video typically stays on the LAN. Full story: [docs/why.md](docs/why.md) · [docs/warum.md](docs/warum.md).
 
-## What’s new in 1.2.4+
+## What’s new in this fork (1.3.0)
+
+- **Email / password login** next to the QR flow (`POST /api/login/password`, Tuya RSA + MD5 password protocol)
+- **Session auto-renew** — re-logs in automatically on `USER_SESSION_LOSS` / `USER_SESSION_INVALID`, so streams no longer die after Tuya’s **72-hour** web session limit
+- **Prebuilt Docker images** on GHCR for `amd64` and `arm64`: `ghcr.io/juanmandev/tuya-rtsp-bridge` — no local build needed
+- **Prebuilt Home Assistant add-on images** — installing / updating the add-on is a pull, not a long on-device Go build
+- Docker: bind-mounted `./data` / `./config` are chowned on start (fixes `PermissionError` on fresh Linux hosts); `PUID` / `PGID` supported
+- More robust startup: falls back to the cached camera list if cloud discovery fails; native `/proc` fallback when `pgrep` / `pkill` are missing
+- Updated stack: Go 1.27, pion/webrtc 4.2, Python 3.14, Debian trixie, requests 2.34, pillow 13, cryptography 50, tinytuya 1.21
+- UI strings for the new login form in all 18 languages
+
+## What’s new in 1.2.4+ (upstream)
 
 - QR login: fixed **320×320** canvas (Windows slit-QR bug fixed) — [issue #2](https://github.com/DanEng1982/tuya-rtsp-bridge/issues/2)
 - **Home Assistant OS add-on:** [homeassistant/tuya_rtsp_bridge/](homeassistant/tuya_rtsp_bridge/) (host network) — [issue #1](https://github.com/DanEng1982/tuya-rtsp-bridge/issues/1)
@@ -46,6 +63,16 @@ Signaling still uses Tuya. When you watch from this PC, video typically stays on
 - Protect session auto-relogin when cookies expire
 
 ### The app
+
+Email / password sign-in with **Auto-renew session**, running headless in Docker (web UI on `:8787`, PTZ arrows per camera):
+
+![Tuya RTSP Bridge web UI in Docker: Email tab with email, password, country code and auto-renew session, cameras with RTSP HD URLs and PTZ controls.](docs/images/ui-email-login.png)
+
+Fresh container, web UI before sign-in (QR tab; the Email tab is one click away):
+
+![Tuya RTSP Bridge web UI first run in Docker: QR Code / Email tabs, Create QR button, empty camera list, switches and restart buttons.](docs/images/ui-web-first-run.png)
+
+Desktop app (Windows / Linux GUI):
 
 First run — language, region, QR, then confirm in Smart Life. No cameras yet:
 
@@ -56,6 +83,8 @@ After login — demo names only (`Front yard`, `Driveway`). Preview panes stay b
 ![Tuya RTSP Bridge with two placeholder cameras and HD RTSP URLs on 127.0.0.1.](docs/images/ui-ready.png)
 
 ## Credits
+
+**Original author:** [@DanEng1982](https://github.com/DanEng1982) — [DanEng1982/tuya-rtsp-bridge](https://github.com/DanEng1982/tuya-rtsp-bridge). This fork only adds the changes listed above; please star the original too.
 
 The RTSP engine is **[tuya-ipc-terminal](https://github.com/seydx/tuya-ipc-terminal)** by **[seydx](https://github.com/seydx)** (MIT), vendored at commit `d65b3e9` with three documented local patches. See [CREDITS.md](CREDITS.md) and [NOTICE.md](NOTICE.md).
 
@@ -102,14 +131,30 @@ Windows users do **not** install Python, VLC, or ffmpeg. That is all inside the 
 
 ### 1. Install
 
-- **Windows:** `TuyaRtspBridge-Setup.exe` from [Releases](https://github.com/DanEng1982/tuya-rtsp-bridge/releases) — next, next, finish. Details: [docs/windows.md](docs/windows.md)
-- **Docker (Linux / HA host):** [docs/docker.md](docs/docker.md) — `docker compose up -d --build`
-- **Home Assistant OS add-on:** [homeassistant/tuya_rtsp_bridge/](homeassistant/tuya_rtsp_bridge/) (host network)
+- **Docker (Linux / HA host):** prebuilt image — see [Docker quick start](#docker-quick-start) · [docs/docker.md](docs/docker.md)
+- **Home Assistant OS add-on:** add `https://github.com/JuanmanDev/tuya-rtsp-bridge` as add-on repository — [homeassistant/tuya_rtsp_bridge/](homeassistant/tuya_rtsp_bridge/) (host network)
+- **Windows:** `TuyaRtspBridge-Setup.exe` from the [upstream Releases](https://github.com/DanEng1982/tuya-rtsp-bridge/releases) (1.2.x, without this fork’s email login / auto-renew) — or run this fork [from source](#install-from-source) with `launch.bat`. Details: [docs/windows.md](docs/windows.md)
 - **Arch Linux:** [docs/arch-linux.md](docs/arch-linux.md) — `./launch.sh` or `packaging/arch/PKGBUILD`
 - **From source:** see [Install from source](#install-from-source)
 
 Windows install dir: `%LOCALAPPDATA%\Programs\TuyaRtspBridge`.  
 Logins: `%APPDATA%\TuyaRtspBridge\` (Windows) or `~/.local/share/tuya-rtsp-bridge/` (Linux). Never in git.
+
+### Docker quick start
+
+```bash
+mkdir tuya-rtsp-bridge && cd tuya-rtsp-bridge
+curl -fsSLO https://raw.githubusercontent.com/JuanmanDev/tuya-rtsp-bridge/main/docker-compose.yml
+docker compose up -d
+```
+
+or without compose:
+
+```bash
+docker run -d --name tuya-rtsp-bridge --restart unless-stopped --network host   -v ./data:/data -v ./config:/config   ghcr.io/juanmandev/tuya-rtsp-bridge:latest
+```
+
+Then open `http://<this-host>:8787`. Tags: `latest` (main), `1.3.0` / `1.3` (releases), `sha-<commit>`. Platforms: `linux/amd64`, `linux/arm64`.
 
 ### 2. Log in
 
@@ -118,6 +163,8 @@ Logins: `%APPDATA%\TuyaRtspBridge\` (Windows) or `~/.local/share/tuya-rtsp-bridg
 3. Click **Create QR** (fixed 320×320 square — scannable on phones)
 4. In Smart Life / Tuya Smart: scan, then **confirm**
 5. Cameras appear with copy-paste HD URLs
+
+**Or** use the **Email** tab: app email, password, country code (phone prefix, e.g. `34` Spain, `49` Germany, `1` USA) and tick **Auto-renew session** so the bridge signs itself in again when Tuya expires the session (~72 h). The password is stored only in your local data folder.
 
 If the QR “does nothing”, wait — the app polls until you confirm. Wrong region = empty camera list; try the other EU/US cluster. If Windows shows a connection error once, wait a second and retry — the UI starts the local API automatically.
 
@@ -138,7 +185,7 @@ Ready-made snippets: [docs/nvr.md](docs/nvr.md).
 ## Install from source
 
 ```bat
-git clone https://github.com/DanEng1982/tuya-rtsp-bridge.git
+git clone https://github.com/JuanmanDev/tuya-rtsp-bridge.git
 cd tuya-rtsp-bridge
 python -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
@@ -156,7 +203,7 @@ chmod +x launch.sh
 ./launch.sh
 ```
 
-Need Go only to build the engine. Release builds on Windows already include the `.exe`.
+Need Go **1.26+** only to build the engine. Release builds on Windows already include the `.exe`.
 
 ## Docs
 
@@ -185,8 +232,8 @@ If this un-clouded a camera you already own, **star the repo** so the next perso
 
 Then pick one:
 
-- [Report a camera model](https://github.com/DanEng1982/tuya-rtsp-bridge/issues/new?template=camera.yml) (Smart Life / Tuya Smart + region)
-- [Suggest a feature](https://github.com/DanEng1982/tuya-rtsp-bridge/issues/new?template=feature.yml)
+- [Report a camera model](https://github.com/JuanmanDev/tuya-rtsp-bridge/issues/new?template=camera.yml) (Smart Life / Tuya Smart + region)
+- [Suggest a feature](https://github.com/JuanmanDev/tuya-rtsp-bridge/issues/new?template=feature.yml)
 - Add a language or fix a string in `src/i18n.py` — see [CONTRIBUTING.md](CONTRIBUTING.md)
 
 PRs from anywhere are welcome. English in code comments; UI already speaks eighteen languages.

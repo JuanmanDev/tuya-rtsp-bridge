@@ -6,7 +6,7 @@ Two ways. Both need a Tuya Smart / Smart Life account that already sees the came
 
 ```bash
 sudo pacman -S --needed base-devel go
-git clone https://github.com/DanEng1982/tuya-rtsp-bridge.git
+git clone https://github.com/JuanmanDev/tuya-rtsp-bridge.git
 cd tuya-rtsp-bridge/packaging/arch
 makepkg -si
 tuya-rtsp-bridge
@@ -45,7 +45,7 @@ cd packaging/arch && makepkg -si -f
 
 ```bash
 sudo pacman -S --needed python python-pip tk go vlc ffmpeg
-git clone https://github.com/DanEng1982/tuya-rtsp-bridge.git
+git clone https://github.com/JuanmanDev/tuya-rtsp-bridge.git
 cd tuya-rtsp-bridge
 chmod +x launch.sh
 ./launch.sh            # GUI

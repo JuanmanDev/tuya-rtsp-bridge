@@ -29,6 +29,8 @@ Applied on top of `d65b3e9`. Kept small on purpose.
    profile, not only `cwd/.tuya-data`.
 4. **`cmd/cameras/cameras.go`** — treat doorbells / `sp_*` / p2p devices as
    cameras; do not drop a device if WebRTC config fails.
+5. **`go.mod` / `go.sum`** — dependencies bumped with `go get -u ./... && go mod tidy`
+   (pion/webrtc 4.2.x, golang.org/x/* current; module now requires Go 1.26+). No source changes.
 
 Re-apply after an upstream pull:
 
