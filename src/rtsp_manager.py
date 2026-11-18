@@ -1,4 +1,4 @@
-"""Baut und steuert tuya-ipc-terminal als RTSP-Brücke."""
+"""Builds and controls tuya-ipc-terminal as the RTSP bridge."""
 from __future__ import annotations
 
 import os

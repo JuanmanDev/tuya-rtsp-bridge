@@ -1,4 +1,4 @@
-"""Lokales Tuya→RTSP Brücken-Tool. UI auf http://127.0.0.1:8787"""
+"""Local Tuya → RTSP bridge. Web UI / API on http://127.0.0.1:8787"""
 from __future__ import annotations
 
 import io
@@ -174,13 +174,34 @@ def start_hls_proxies() -> None:
         try:
             hd_proxy.get(cam_id).start(url)
         except Exception as exc:
-            set_phase("logged_in", f"HD-Proxy für {cam_id}: {exc}")
+            set_phase("logged_in", f"HD proxy for {cam_id}: {exc}")
 
 
 def set_phase(phase: str, message: str) -> None:
     with state_lock:
         ui_state["phase"] = phase
         ui_state["message"] = message
+
+
+def _cams_found(n: int) -> str:
+    return f"{n} camera{'' if n == 1 else 's'} found."
+
+
+def _start_streams(cams: list, keep_error: bool = False) -> None:
+    """Start the RTSP engine + services after login and warm up LAN PTZ.
+
+    keep_error: do not overwrite an "error" phase set by a failed discovery.
+    """
+    n = len(cams)
+    try:
+        rtsp.start()
+        apply_service_flags(services.load_flags())
+        if not (keep_error and ui_state["phase"] == "error"):
+            set_phase("logged_in", f"{n} camera{'' if n == 1 else 's'} · RTSP :{rtsp.port}")
+        local_ptz.warmup([c.get("deviceId") for c in cams if c.get("deviceId")])
+    except Exception as exc:
+        if not (keep_error and ui_state["phase"] == "error"):
+            set_phase("logged_in", f"{n} camera{'' if n == 1 else 's'}. RTSP: {exc}")
 
 
 def qr_png_bytes() -> bytes:
@@ -210,7 +231,7 @@ def start_qr_flow(region_id: str) -> None:
         client.set_region(region_id)
     client.generate_qr()
     gen = client.generation
-    set_phase("waiting", "QR mit Smart Life / Tuya Smart scannen und bestätigen.")
+    set_phase("waiting", "Scan the QR with Smart Life / Tuya Smart and confirm.")
     threading.Thread(target=_poll_worker, args=(gen,), daemon=True).start()
 
 
@@ -222,25 +243,19 @@ def _poll_worker(generation: int) -> None:
                 return
             if got:
                 client.save_session()
-                set_phase("logged_in", "Login ok. Suche Kameras …")
+                set_phase("logged_in", "Signed in. Looking for cameras …")
                 try:
                     cams = client.discover_cameras()
                 except Exception as exc:
                     cams = []
                     client.last_error = str(exc)
                 note = (getattr(client, "discovery", None) or {}).get("note")
-                set_phase("logged_in", note or f"{len(cams)} Kamera(s) gefunden.")
-                try:
-                    rtsp.start()
-                    apply_service_flags(services.load_flags())
-                    set_phase("logged_in", f"{len(cams)} Kamera(s) · RTSP :{rtsp.port}")
-                    local_ptz.warmup([c.get("deviceId") for c in cams if c.get("deviceId")])
-                except Exception as exc:
-                    set_phase("logged_in", f"{len(cams)} Kamera(s). RTSP: {exc}")
+                set_phase("logged_in", note or _cams_found(len(cams)))
+                _start_streams(cams)
                 return
             client.generate_qr()
             generation = client.generation
-            set_phase("waiting", "QR erneuert — bitte erneut scannen.")
+            set_phase("waiting", "QR expired and was renewed — please scan again.")
     except Exception as exc:
         client.last_error = str(exc)
         set_phase("error", str(exc))
@@ -352,17 +367,14 @@ class Handler(SimpleHTTPRequestHandler):
                 password = body.get("password", "")
                 country_code = str(body.get("countryCode") or "34")
                 auto_renew = bool(body.get("autoRenew"))
+                if not email or not password:
+                    self._json(400, {"error": "Email and password required"})
+                    return
                 try:
                     client.login_with_password(email, password, country_code, auto_renew)
                     cams = client.discover_cameras()
-                    set_phase("logged_in", f"{len(cams)} Kamera(s) gefunden.")
-                    try:
-                        rtsp.start()
-                        apply_service_flags(services.load_flags())
-                        set_phase("logged_in", f"{len(cams)} Kamera(s) · RTSP :{rtsp.port}")
-                        local_ptz.warmup([c.get("deviceId") for c in cams if c.get("deviceId")])
-                    except Exception as exc:
-                        set_phase("logged_in", f"{len(cams)} Kamera(s). RTSP: {exc}")
+                    set_phase("logged_in", _cams_found(len(cams)))
+                    _start_streams(cams)
                     self._json(200, public_state())
                 except Exception as exc:
                     set_phase("error", str(exc))
@@ -426,7 +438,7 @@ class Handler(SimpleHTTPRequestHandler):
                 sd_proxy.stop()
                 rtsp.stop()
                 client.logout()
-                set_phase("idle", "Abgemeldet.")
+                set_phase("idle", "Signed out.")
                 self._json(200, public_state())
                 return
             if path == "/api/cameras/refresh":
@@ -436,13 +448,14 @@ class Handler(SimpleHTTPRequestHandler):
                     except Exception:
                         pass
                 cams = client.discover_cameras()
-                set_phase("logged_in", f"{len(cams)} Kamera(s) gefunden.")
+                n = len(cams)
+                set_phase("logged_in", _cams_found(n))
                 try:
                     restart_rtsp_engine()
                     apply_service_flags(services.load_flags())
-                    set_phase("logged_in", f"{len(cams)} Kamera(s) · RTSP :{rtsp.port}")
+                    set_phase("logged_in", f"{n} camera{'' if n == 1 else 's'} · RTSP :{rtsp.port}")
                 except Exception as exc:
-                    set_phase("logged_in", f"{len(cams)} Kamera(s). RTSP: {exc}")
+                    set_phase("logged_in", f"{n} camera{'' if n == 1 else 's'}. RTSP: {exc}")
                 self._json(200, public_state())
                 return
             if path == "/api/rtsp/start":
@@ -519,24 +532,17 @@ def main() -> None:
         try:
             # Always discover cameras when session is loaded
             cams = client.discover_cameras()
-            set_phase("logged_in", f"{len(cams)} Kamera(s) gefunden.")
+            set_phase("logged_in", _cams_found(len(cams)))
             client.cameras = cams
         except Exception as exc:
-            set_phase("error", f"Sitzung geladen. Kamerasuche: {exc}")
-            
+            # Keep the cached camera list so streams still come up.
+            set_phase("error", f"Session loaded, camera discovery failed: {exc}")
+
         if cams:
-            try:
-                rtsp.start()
-                apply_service_flags(services.load_flags())
-                if ui_state["phase"] != "error":
-                    set_phase("logged_in", f"{len(cams)} Kamera(s) · RTSP :{rtsp.port}")
-                local_ptz.warmup([c.get("deviceId") for c in cams if c.get("deviceId")])
-            except Exception as exc:
-                if ui_state["phase"] != "error":
-                    set_phase("logged_in", f"{len(cams)} Kamera(s). RTSP: {exc}")
+            _start_streams(cams, keep_error=True)
 
     httpd = ThreadingHTTPServer((HOST, PORT), Handler)
-    print(f"Tuya-Brücke: http://127.0.0.1:{PORT}  (PTZ=LAN-DP 119)")
+    print(f"Tuya RTSP Bridge: http://127.0.0.1:{PORT}  (PTZ=LAN-DP 119)")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

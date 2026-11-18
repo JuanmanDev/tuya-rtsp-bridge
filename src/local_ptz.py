@@ -274,7 +274,7 @@ class LocalPtz:
                     return rec
                 last = f"{ip} v{ver}"
         raise RuntimeError(
-            f"Kamera {device_id} nicht auf LAN "
+            f"Camera {device_id} not found on LAN "
             f"(prefixes={prefs or ['?']}, scanned={len(scanned)}, last={last or 'none'})"
         )
 

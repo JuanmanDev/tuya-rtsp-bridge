@@ -50,5 +50,21 @@ class TestAuth(unittest.TestCase):
         self.assertTrue(ok)
         mock_password_login.assert_called_once_with("user@test.com", "secret", "34")
 
+
+class TestTuyaErrorText(unittest.TestCase):
+    def test_known_code_is_english(self):
+        from tuya_client import tuya_error_text
+        body = {"success": False, "errorCode": "USER_PASSWD_WRONG", "errorMsg": "账号或密码错误"}
+        self.assertTrue(tuya_error_text(body, "x").startswith("Wrong email or password"))
+
+    def test_unknown_code_keeps_message_and_code(self):
+        from tuya_client import tuya_error_text
+        self.assertEqual(tuya_error_text({"errorCode": "FOO", "errorMsg": "bar"}, "x"), "bar (FOO)")
+
+    def test_fallback(self):
+        from tuya_client import tuya_error_text
+        self.assertEqual(tuya_error_text({}, "fallback"), "fallback")
+
+
 if __name__ == '__main__':
     unittest.main()

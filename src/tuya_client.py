@@ -1,4 +1,4 @@
-"""Tuya IPC-Terminal Web-API (QR-Login, Kameras, Session)."""
+"""Tuya IPC-Terminal web API (QR login, password login, cameras, session)."""
 from __future__ import annotations
 
 import json
@@ -152,6 +152,26 @@ def safe_poll_text(raw: Any) -> str:
     return text[:400]
 
 
+
+# Tuya often answers in Chinese regardless of region; map known codes to English.
+_TUYA_ERRORS = {
+    "USER_PASSWD_WRONG": "Wrong email or password. Also check the country code and server region.",
+    "USER_NOT_EXISTS": "No account with this email for this country code / server region.",
+    "USER_SESSION_INVALID": "Session expired. Sign in again.",
+    "USER_SESSION_LOSS": "Session expired. Sign in again.",
+}
+
+
+def tuya_error_text(body: dict, fallback: str) -> str:
+    """Readable error for a failed Tuya API JSON body."""
+    code = str(body.get("errorCode") or "")
+    if code in _TUYA_ERRORS:
+        return _TUYA_ERRORS[code]
+    msg = str(body.get("errorMsg") or body.get("msg") or "")
+    if msg and code:
+        return f"{msg} ({code})"
+    return msg or code or fallback
+
 class TuyaClient:
     def __init__(self, data_dir: Path):
         self.data_dir = data_dir
@@ -220,7 +240,7 @@ class TuyaClient:
         resp.raise_for_status()
         body = resp.json()
         if not body.get("success"):
-            msg = body.get("errorMsg") or body.get("msg") or "Tuya-API-Fehler"
+            msg = body.get("errorMsg") or body.get("msg") or "Tuya API error"
             err_code = body.get("errorCode") or ""
             is_body_session_err = (
                 "USER_SESSION" in str(msg)
@@ -271,7 +291,7 @@ class TuyaClient:
 
         email = (email or "").strip()
         if not email or not password:
-            raise RuntimeError("Email und Passwort nötig")
+            raise RuntimeError("Email and password required")
         origin = f"https://{self.host}"
         headers = self._headers("/login")
         # fresh jar for login
@@ -284,9 +304,7 @@ class TuyaClient:
             timeout=20,
         ).json()
         if not tok.get("success"):
-            raise RuntimeError(
-                tok.get("errorMsg") or tok.get("errorCode") or "Login-Token fehlgeschlagen"
-            )
+            raise RuntimeError(tuya_error_text(tok, "Login token request failed"))
         tres = tok["result"]
         pb = tres.get("pbKey") or ""
         token = tres.get("token")
@@ -309,12 +327,10 @@ class TuyaClient:
             timeout=20,
         ).json()
         if not body.get("success"):
-            raise RuntimeError(
-                body.get("errorMsg") or body.get("errorCode") or "Passwort-Login fehlgeschlagen"
-            )
+            raise RuntimeError(tuya_error_text(body, "Password login failed"))
         login = body.get("result")
         if not isinstance(login, dict) or not login.get("sid"):
-            raise RuntimeError("Passwort-Login ohne SID")
+            raise RuntimeError("Password login returned no session (sid)")
         self.login = login
         self.token = None
         self.save_session()
@@ -348,7 +364,7 @@ class TuyaClient:
             if email and password:
                 self.password_login(email, password, country)
             else:
-                raise RuntimeError("Nicht eingeloggt")
+                raise RuntimeError("Not signed in")
         try:
             self._post("/api/customized/web/app/info", payload=None, referer="/playback")
         except Exception:
@@ -440,7 +456,7 @@ class TuyaClient:
                 got = self.poll_once()
             except Exception as exc:
                 self.last_error = str(exc)
-                self.last_poll = f"poll-fehler: {exc}"
+                self.last_poll = f"poll error: {exc}"
                 time.sleep(interval_s)
                 continue
             if got:
@@ -475,7 +491,7 @@ class TuyaClient:
 
     def save_session(self) -> Path:
         if not self.login:
-            raise RuntimeError("Nicht eingeloggt")
+            raise RuntimeError("Not signed in")
         email = self.login.get("email") or self.login.get("username") or self.login.get("uid")
         try:
             cookies = self._cookie_dump()
@@ -532,7 +548,7 @@ class TuyaClient:
     def discover_cameras(self) -> list[dict]:
         self.ensure_session()
         if not self.login:
-            raise RuntimeError("Nicht eingeloggt")
+            raise RuntimeError("Not signed in")
         self._post("/api/customized/web/app/info", payload=None, referer="/playback")
         devices: list[dict] = []
         seen: set[str] = set()

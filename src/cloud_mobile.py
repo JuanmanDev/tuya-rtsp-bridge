@@ -20,6 +20,8 @@ from typing import Any, Optional
 
 import requests
 
+from tuya_client import tuya_error_text
+
 # Public Tuya Smart app credentials (reverse-engineered — NOT user IoT keys)
 # Protect web sid validates against this app key, not Smart Life.
 _APP_KEY = "3fjrekuxank9eaej3gcx"
@@ -229,8 +231,8 @@ class CloudMobile:
                 return self._sid
             if not self._email or not self._password:
                 raise RuntimeError(
-                    "Cloud-PTZ: Smart-Life/Tuya E-Mail+Passwort nötig "
-                    "(einmalig; reverse App-API, keine IoT-Keys)"
+                    "Cloud PTZ: Smart Life / Tuya email + password needed "
+                    "(once; reverse app API, no IoT keys)"
                 )
             host = self._protect_host()
             sess = requests.Session()
@@ -254,16 +256,12 @@ class CloudMobile:
                 timeout=20,
             ).json()
             if not tok_body.get("success"):
-                raise RuntimeError(
-                    tok_body.get("errorMsg")
-                    or tok_body.get("errorCode")
-                    or "Login-Token fehlgeschlagen"
-                )
+                raise RuntimeError("Cloud PTZ: " + tuya_error_text(tok_body, "login token request failed"))
             tres = tok_body["result"]
             pb = tres.get("pbKey") or tres.get("publicKey")
             token = tres.get("token")
             if not pb or not token:
-                raise RuntimeError("Cloud-PTZ: Login-Token unvollständig")
+                raise RuntimeError("Cloud PTZ: login token incomplete")
             enc = _rsa_pkcs1_encrypt_md5_password(self._password, pb)
             login_body = sess.post(
                 origin + "/api/private/email/login",
@@ -279,15 +277,11 @@ class CloudMobile:
                 timeout=20,
             ).json()
             if not login_body.get("success"):
-                raise RuntimeError(
-                    login_body.get("errorMsg")
-                    or login_body.get("errorCode")
-                    or "Cloud-Login fehlgeschlagen"
-                )
+                raise RuntimeError("Cloud PTZ: " + tuya_error_text(login_body, "cloud login failed"))
             result = login_body.get("result") or {}
             sid = result.get("sid")
             if not sid:
-                raise RuntimeError("Cloud-PTZ: Login ohne SID")
+                raise RuntimeError("Cloud PTZ: login returned no session (sid)")
             domain = result.get("domain") or {}
             api = domain.get("mobileApiUrl")
             if api:

@@ -1,4 +1,4 @@
-"""HEVC-HD → H.264 HLS für VLC/Browser. Eine ffmpeg-Instanz pro Kamera."""
+"""HEVC HD → H.264 HLS for VLC / browser. One ffmpeg process per camera."""
 
 from __future__ import annotations
 

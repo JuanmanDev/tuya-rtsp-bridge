@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.1
+
+- Readable login errors: Tuya error codes (e.g. `USER_PASSWD_WRONG`) mapped to English instead of the raw Chinese `errorMsg`, also for cloud PTZ login
+- Status and error messages from the server are English everywhere (were a German/English mix next to the localized UI)
+- `POST /api/login/password` returns 400 for empty email / password
+- One shared post-login path (start RTSP, services, PTZ warmup) for QR, password and startup
+- Dependabot: weekly pip + Go, monthly Actions + Docker base images
+
 ## 1.3.0 (fork: JuanmanDev/tuya-rtsp-bridge)
 
 Fork of [DanEng1982/tuya-rtsp-bridge](https://github.com/DanEng1982/tuya-rtsp-bridge) — upstream [PR #4](https://github.com/DanEng1982/tuya-rtsp-bridge/pull/4) was not merged.

@@ -1,4 +1,4 @@
-"""Native Desktop-GUI für die Tuya-Brücke. Backend bleibt :8787 / :8554."""
+"""Native desktop GUI for the bridge. Backend stays on :8787 / :8554."""
 from __future__ import annotations
 
 import json
