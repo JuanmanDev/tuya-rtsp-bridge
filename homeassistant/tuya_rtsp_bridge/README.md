@@ -15,6 +15,10 @@ Turn Tuya / Smart Life cameras into plain RTSP for Frigate, go2rtc, Agent DVR.
    rtsp://<ha-host>:8554/<CameraName>/hd
    ```
 
+## 💖 Support this project
+
+If this add-on helps you, please consider supporting it: [GitHub Sponsors](https://github.com/sponsors/JuanmanDev) · [Ko-fi](https://ko-fi.com/juanmandev) · [PayPal](https://paypal.me/juanmandev)
+
 ## Requirements
 
 - **host_network: true** (already set) — cameras need LAN WebRTC/UDP and PTZ TCP 6668

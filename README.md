@@ -7,6 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/JuanmanDev/tuya-rtsp-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/JuanmanDev/tuya-rtsp-bridge/actions/workflows/ci.yml)
 [![Docker](https://github.com/JuanmanDev/tuya-rtsp-bridge/actions/workflows/docker.yml/badge.svg)](https://github.com/JuanmanDev/tuya-rtsp-bridge/pkgs/container/tuya-rtsp-bridge)
+[![Sponsor](https://img.shields.io/badge/sponsor-JuanmanDev-ea4aaa?logo=github-sponsors)](https://github.com/sponsors/JuanmanDev)
 [![Fork of DanEng1982/tuya-rtsp-bridge](https://img.shields.io/badge/fork%20of-DanEng1982%2Ftuya--rtsp--bridge-blue)](https://github.com/DanEng1982/tuya-rtsp-bridge)
 [![GitHub stars](https://img.shields.io/github/stars/JuanmanDev/tuya-rtsp-bridge?style=social)](https://github.com/JuanmanDev/tuya-rtsp-bridge/stargazers)
 [![GitHub issues](https://img.shields.io/github/issues/JuanmanDev/tuya-rtsp-bridge)](https://github.com/JuanmanDev/tuya-rtsp-bridge/issues)
@@ -237,6 +238,14 @@ Then pick one:
 - Add a language or fix a string in `src/i18n.py` — see [CONTRIBUTING.md](CONTRIBUTING.md)
 
 PRs from anywhere are welcome. English in code comments; UI already speaks eighteen languages.
+
+## 💖 Support this project
+
+If you found this project helpful, please consider supporting it!
+
+[![GitHub Sponsor](https://img.shields.io/badge/Sponsor-JuanmanDev-ea4aaa?style=for-the-badge&logo=github)](https://github.com/sponsors/JuanmanDev) [![Ko-fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/juanmandev) [![PayPal](https://img.shields.io/badge/PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/juanmandev)
+
+You can also support the project by [reporting a camera model](https://github.com/JuanmanDev/tuya-rtsp-bridge/issues/new?template=camera.yml), fixing a translation, or giving the repository a star ⭐ if it un-clouded a camera you already own. And please star the original [DanEng1982/tuya-rtsp-bridge](https://github.com/DanEng1982/tuya-rtsp-bridge) too.
 
 ## License
 
