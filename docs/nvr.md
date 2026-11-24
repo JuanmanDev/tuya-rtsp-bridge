@@ -37,6 +37,36 @@ Detect fps can stay at 5 even if the source is ~10. Record uses the same HD URL.
 
 See also `examples/frigate.yml`.
 
+### Two-way audio (talk to the camera)
+
+The bridge can play audio from the NVR through the camera's speaker. It only does this for go2rtc clients (identified by their `User-Agent: go2rtc/...`) and ONVIF-aware clients that send `Require: www.onvif.org/ver20/backchannel`. Plain RTSP players such as VLC or Agent DVR get the same receive-only stream as before. To turn talk-back off for one go2rtc stream, add `#backchannel=0` to its URL.
+
+Only one talker at a time: a second backchannel client writes to the same camera speaker.
+
+```yaml
+go2rtc:
+  streams:
+    living_room:
+      - rtsp://BRIDGE_IP:8554/CameraName/hd
+
+cameras:
+  living_room:
+    live:
+      stream_name: living_room   # the Talk button uses this go2rtc stream
+    ffmpeg:
+      inputs:
+        - path: rtsp://127.0.0.1:8554/living_room
+          input_args: preset-rtsp-restream
+          roles: [record, detect]
+```
+
+Requirements and checks:
+
+- The camera must have a speaker and Tuya must expose two-way audio for it. Mic-only models will not talk back.
+- The audio is G.711 (PCMU or PCMA, 8 kHz), the same format as the camera's own audio.
+- When the camera accepts the track, the bridge log shows `Two-way audio (backchannel) ready`. If the line is missing, the camera does not support talk-back through this path.
+- The Talk button only appears in Frigate when its go2rtc stream reports a backchannel. Check your Frigate version's docs for the exact `live:` / go2rtc keys.
+
 ## go2rtc
 
 ```yaml

@@ -14,3 +14,11 @@ cameras:
       width: 1920
       height: 1080
       fps: 5
+
+# Two-way audio (talk to the camera from the Frigate UI) goes through go2rtc.
+# go2rtc identifies itself in RTSP, so the bridge exposes a sendonly G.711 track
+# to it. Restream the camera through go2rtc and point Frigate at it.
+go2rtc:
+  streams:
+    living_room:
+      - rtsp://127.0.0.1:8554/CameraName/hd

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **Two-way audio for Frigate / go2rtc**: the RTSP server advertises a sendonly G.711 `/backchannel` track to go2rtc clients (`User-Agent: go2rtc/...`) and to clients that send `Require: www.onvif.org/ver20/backchannel`. The WebRTC audio sender towards the camera is bound from the negotiated answer, so it works even when the camera sends no audio. Plain RTSP players get the unchanged receive-only SDP.
+- Backchannel track access is guarded by a mutex (written by WebRTC callbacks, read by RTSP packets)
+- Engine unit tests for the SDP and backchannel negotiation (`go test ./pkg/rtsp/`)
+- Docs: Frigate / go2rtc talk-back setup in `docs/nvr.md` and `examples/frigate.yml`
+
 ## 1.3.1
 
 - Readable login errors: Tuya error codes (e.g. `USER_PASSWD_WRONG`) mapped to English instead of the raw Chinese `errorMsg`, also for cloud PTZ login
