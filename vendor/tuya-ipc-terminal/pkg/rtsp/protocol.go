@@ -286,8 +286,13 @@ func (s *RTSPServer) handleOptions(client *RTSPClient, request *RTSPRequest) {
 }
 
 func (s *RTSPServer) handleDescribe(client *RTSPClient, request *RTSPRequest) {
+	// Advertise the two-way audio (backchannel) track only to clients that can
+	// use it. Plain RTSP players (VLC, LIVE555) do not, and some of them reject
+	// a SDP that contains a sendonly audio media line.
+	backchannel := wantsBackchannel(request.Headers)
+
 	// Generate SDP for the camera stream
-	sdp := s.generateSDP(client.stream.camera, request.URL, client.stream.resolution)
+	sdp := s.generateSDP(client.stream.camera, request.URL, client.stream.resolution, backchannel)
 
 	headers := map[string]string{
 		"CSeq":          strconv.Itoa(request.CSeq),
@@ -513,7 +518,7 @@ func (s *RTSPServer) handleUnsupportedMethod(client *RTSPClient, request *RTSPRe
 	sendRTSPResponse(client.conn, 501, "Not Implemented", headers, "")
 }
 
-func (s *RTSPServer) generateSDP(camera *storage.CameraInfo, baseURL string, resolution string) string {
+func (s *RTSPServer) generateSDP(camera *storage.CameraInfo, baseURL string, resolution string, backchannel bool) string {
 	sdp := "v=0\r\n"
 	sdp += fmt.Sprintf("o=- %d %d IN IP4 0.0.0.0\r\n", time.Now().Unix(), time.Now().Unix())
 	sdp += "s=Tuya Camera Stream\r\n"
@@ -572,35 +577,53 @@ func (s *RTSPServer) generateSDP(camera *storage.CameraInfo, baseURL string, res
 	videoSdp += "a=recvonly\r\n"
 
 	// Audio media description based on skill
-	if skill != nil && len(skill.Audios) > 0 {
-		audioInfo := skill.Audios[0] // Nehme ersten audio stream
-
-		switch audioInfo.CodecType {
-		// case 101: // PCML
-		// 	audioSdp += "m=audio 0 RTP/AVP 97\r\n"
-		// 	audioSdp += "a=rtpmap:97 L16/8000\r\n"
-		case 101, 105: // PCML and PCMU
-			audioSdp += "m=audio 0 RTP/AVP 0\r\n"
-			audioSdp += "a=rtpmap:0 PCMU/8000\r\n"
-		case 106: // PCMA
-			audioSdp += "m=audio 0 RTP/AVP 8\r\n"
-			audioSdp += "a=rtpmap:8 PCMA/8000\r\n"
-		default:
-			// Fallback
-			audioSdp += "m=audio 0 RTP/AVP 0\r\n"
-			audioSdp += "a=rtpmap:0 PCMU/8000\r\n"
-		}
-	} else {
-		// Fallback in case no audio stream is found
-		audioSdp += "m=audio 0 RTP/AVP 0\r\n"
-		audioSdp += "a=rtpmap:0 PCMU/8000\r\n"
-	}
-
+	audioSdp = audioMediaSDP(skill)
 	audioSdp += fmt.Sprintf("a=control:%s/audio\r\n", baseURL)
 	audioSdp += "a=recvonly\r\n"
 
-	// No backchannel track: VLC/LIVE555 often refuses the whole SDP with sendonly audio.
 	finalSdp := sdp + videoSdp + audioSdp
 
+	// Two-way audio: a second audio m-line, sendonly, controlled by ".../backchannel".
+	// SETUP for this track is handled by handleSetup (URL contains "/backchannel");
+	// received RTP is written to the camera by WebRTCBridge.
+	if backchannel {
+		finalSdp += audioMediaSDP(skill)
+		finalSdp += fmt.Sprintf("a=control:%s/backchannel\r\n", baseURL)
+		finalSdp += "a=sendonly\r\n"
+	}
+
 	return finalSdp
+}
+
+// wantsBackchannel decides whether a DESCRIBE gets the sendonly backchannel
+// media. Two signals:
+//   - "Require: www.onvif.org/ver20/backchannel" (ONVIF-aware clients);
+//   - "User-Agent: go2rtc/..." — go2rtc does not send Require. It SETUPs any
+//     sendonly audio media it finds in the SDP and falls back to no backchannel
+//     if that fails. Frigate's two-way talk goes through its bundled go2rtc.
+func wantsBackchannel(headers map[string]string) bool {
+	for name, value := range headers {
+		switch {
+		case strings.EqualFold(name, "Require") && strings.Contains(strings.ToLower(value), "backchannel"):
+			return true
+		case strings.EqualFold(name, "User-Agent") && strings.HasPrefix(strings.ToLower(value), "go2rtc"):
+			return true
+		}
+	}
+	return false
+}
+
+// audioMediaSDP returns the m= and a=rtpmap lines for the camera's G.711 audio.
+func audioMediaSDP(skill *tuya.Skill) string {
+	codecType := 0
+	if skill != nil && len(skill.Audios) > 0 {
+		codecType = skill.Audios[0].CodecType
+	}
+
+	switch codecType {
+	case 106: // PCMA
+		return "m=audio 0 RTP/AVP 8\r\na=rtpmap:8 PCMA/8000\r\n"
+	default: // 101/105 PCMU and fallback
+		return "m=audio 0 RTP/AVP 0\r\na=rtpmap:0 PCMU/8000\r\n"
+	}
 }

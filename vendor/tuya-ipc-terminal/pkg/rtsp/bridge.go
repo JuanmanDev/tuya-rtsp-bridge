@@ -53,7 +53,8 @@ type WebRTCBridge struct {
 	// RTP forwarding
 	videoTrack  *pion.TrackRemote
 	audioTrack  *pion.TrackRemote
-	backchannel *pion.TrackLocalStaticRTP
+	backchannel *pion.TrackLocalStaticRTP // audio sender towards the camera (two-way talk)
+	bcMu        sync.Mutex                // guards backchannel: written by WebRTC callbacks, read by RTSP
 
 	// Callbacks
 	OnVideoPacket func(packet *rtp.Packet)
@@ -209,9 +210,66 @@ func (wb *WebRTCBridge) IsConnected() bool {
 	return wb.connected
 }
 
+// ForwardBackchannelAudioPacket writes RTP received from the RTSP client
+// (go2rtc / Frigate two-way talk) into the WebRTC audio sender towards the camera.
 func (wb *WebRTCBridge) ForwardBackchannelAudioPacket(packet *rtp.Packet) {
-	if wb.backchannel != nil {
-		_ = wb.backchannel.WriteRTP(packet)
+	if track := wb.getBackchannel(); track != nil {
+		_ = track.WriteRTP(packet)
+	}
+}
+
+func (wb *WebRTCBridge) getBackchannel() *pion.TrackLocalStaticRTP {
+	wb.bcMu.Lock()
+	defer wb.bcMu.Unlock()
+	return wb.backchannel
+}
+
+func (wb *WebRTCBridge) setBackchannel(track *pion.TrackLocalStaticRTP) {
+	wb.bcMu.Lock()
+	defer wb.bcMu.Unlock()
+	wb.backchannel = track
+}
+
+// ensureBackchannel binds a local G.711 track to the audio sender once the
+// answer is applied, for the case where the camera does not send audio and
+// OnTrack therefore never fires. Only sendable audio transceivers qualify.
+func (wb *WebRTCBridge) ensureBackchannel() {
+	if wb.getBackchannel() != nil {
+		return
+	}
+
+	for _, tr := range wb.peerConnection.GetTransceivers() {
+		if tr.Kind() != pion.RTPCodecTypeAudio {
+			continue
+		}
+		if dir := tr.Direction(); dir != pion.RTPTransceiverDirectionSendrecv && dir != pion.RTPTransceiverDirectionSendonly {
+			continue
+		}
+
+		var codec *pion.RTPCodecCapability
+		for _, c := range tr.Sender().GetParameters().Codecs {
+			if c.MimeType == pion.MimeTypePCMU || c.MimeType == pion.MimeTypePCMA {
+				capability := c.RTPCodecCapability
+				codec = &capability
+				break
+			}
+		}
+		if codec == nil {
+			continue
+		}
+
+		localTrack, err := pion.NewTrackLocalStaticRTP(*codec, "audio-backchannel", "pion")
+		if err != nil {
+			core.Logger.Error().Err(err).Msg("Failed to create backchannel track")
+			return
+		}
+		if err := tr.Sender().ReplaceTrack(localTrack); err != nil {
+			core.Logger.Error().Err(err).Msg("Failed to bind backchannel track")
+			return
+		}
+		wb.setBackchannel(localTrack)
+		core.Logger.Info().Msgf("Two-way audio (backchannel) ready: %s", codec.MimeType)
+		return
 	}
 }
 
@@ -329,20 +387,7 @@ func (wb *WebRTCBridge) setupPeerConnection(webRTCConfig *tuya.WebRTCConfig) err
 		} else if track.Kind() == pion.RTPCodecTypeAudio {
 			wb.audioTrack = track
 
-			for _, tr := range wb.peerConnection.GetTransceivers() {
-				if tr.Receiver() == receiver && tr.Kind() == pion.RTPCodecTypeAudio {
-					if tr.Direction() == pion.RTPTransceiverDirectionSendrecv || tr.Direction() == pion.RTPTransceiverDirectionSendonly {
-						localTrack, _ := pion.NewTrackLocalStaticRTP(
-							pion.RTPCodecCapability{MimeType: track.Codec().MimeType},
-							"audio-backchannel", "pion",
-						)
-						tr.Sender().ReplaceTrack(localTrack)
-						wb.backchannel = localTrack
-						core.Logger.Trace().Msgf("Setup backchannel track")
-						break
-					}
-				}
-			}
+			wb.ensureBackchannel()
 
 			if !wb.isHEVC {
 				go wb.handleAudioTrack(track)
@@ -385,6 +430,8 @@ func (wb *WebRTCBridge) setupMQTTCameraClient(webRTCConfig *tuya.WebRTCConfig) {
 			wb.handleError(err)
 			return
 		}
+
+		wb.ensureBackchannel()
 	}
 
 	wb.cameraClient.HandleCandidate = func(candidate tuya.CandidateFrame) {

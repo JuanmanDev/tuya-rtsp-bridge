@@ -20,16 +20,21 @@ specific to this Windows GUI.
 Applied on top of `d65b3e9`. Kept small on purpose.
 
 1. **`pkg/rtsp/protocol.go`** — SDP uses the URL resolution (`hd` / `sd`)
-   instead of always advertising HD. Backchannel `sendonly` audio track
-   removed so VLC/LIVE555 does not reject the session.
-2. **`pkg/rtsp/server.go`** — do not hold the stream mutex across the
+   instead of always advertising HD. The `sendonly` backchannel audio track
+   is only added for go2rtc clients (`User-Agent: go2rtc/…`, which Frigate
+   bundles) and ONVIF clients (`Require: …/backchannel`). Plain RTSP clients
+   (VLC/LIVE555) keep the receive-only SDP.
+2. **`pkg/rtsp/bridge.go`** — the backchannel track is bound from the
+   negotiated answer (`ensureBackchannel`), not only from `OnTrack`, and is
+   accessed under a mutex.
+3. **`pkg/rtsp/server.go`** — do not hold the stream mutex across the
    WebRTC dial (deadlock / stall when several cameras start).
-3. **`pkg/storage/manager.go`** — look for `.tuya-data` in the process
+4. **`pkg/storage/manager.go`** — look for `.tuya-data` in the process
    working directory, `%LOCALAPPDATA%\tuya-ipc-terminal`, and the user
    profile, not only `cwd/.tuya-data`.
-4. **`cmd/cameras/cameras.go`** — treat doorbells / `sp_*` / p2p devices as
+5. **`cmd/cameras/cameras.go`** — treat doorbells / `sp_*` / p2p devices as
    cameras; do not drop a device if WebRTC config fails.
-5. **`go.mod` / `go.sum`** — dependencies bumped with `go get -u ./... && go mod tidy`
+6. **`go.mod` / `go.sum`** — dependencies bumped with `go get -u ./... && go mod tidy`
    (pion/webrtc 4.2.x, golang.org/x/* current; module now requires Go 1.26+). No source changes.
 
 Re-apply after an upstream pull:
@@ -39,4 +44,4 @@ git -C vendor\tuya-ipc-terminal remote add upstream https://github.com/seydx/tuy
 git -C vendor\tuya-ipc-terminal fetch upstream
 ```
 
-Then merge/rebase and restore the three files if they conflict.
+Then merge/rebase and restore the touched files if they conflict.
