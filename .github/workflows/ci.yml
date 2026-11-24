@@ -39,3 +39,7 @@ jobs:
           cache-dependency-path: vendor/tuya-ipc-terminal/go.sum
       - name: Build
         run: CGO_ENABLED=0 go build -trimpath -o /tmp/tuya-ipc-terminal .
+      - name: Vet
+        run: go vet ./...
+      - name: Test
+        run: go test ./... -count=1
