@@ -44,6 +44,11 @@ rtsp://<this-pc>:8554/<CameraName>/hd
 
 Signaling still uses Tuya. When you watch from this PC, video typically stays on the LAN. Full story: [docs/why.md](docs/why.md) · [docs/warum.md](docs/warum.md).
 
+## What’s new
+
+- **Two-way audio (talk to the camera) for Frigate / go2rtc** — audio from the NVR plays through the camera speaker. Works through go2rtc (identified by its `User-Agent`) and ONVIF-aware RTSP clients; VLC and Agent DVR are unaffected. Setup: [docs/nvr.md](docs/nvr.md#two-way-audio-talk-to-the-camera)
+- Engine dependencies refreshed: pion/webrtc 4.2.29, paho.mqtt 1.5.2
+
 ## What’s new in this fork (1.3.0)
 
 - **Email / password login** next to the QR flow (`POST /api/login/password`, Tuya RSA + MD5 password protocol)
@@ -104,6 +109,7 @@ Phone (Smart Life) ──QR──► this PC ──RTSP :8554──► Frigate /
 - SD: `rtsp://<this-pc>:8554/<CameraName>/sd` (H.264, smaller)
 - All cameras share **one** bridge IP; only the path changes
 - Live preview: bundled VLC on Windows Setup; Linux GUI uses an ffmpeg MJPEG pipe
+- Two-way audio: optional G.711 talk-back track for go2rtc / Frigate (see [NVR guide](docs/nvr.md))
 - QR login draws a fixed **320×320** scannable square (Windows slit-QR bug fixed in 1.2.4+)
 - English, Deutsch, Nederlands, Français, Español, Português, Italiano, Polski, Čeština, Русский, Українська, Bahasa Indonesia, 简体中文, हिन्दी, 日本語, 한국어, עברית, ייִדיש
 
@@ -115,6 +121,7 @@ Signaling still uses Tuya cloud. When you watch from this PC, video typically st
 - Many models output about **10 fps** in the HD bitstream — that is the camera, not this app
 - VLC 3 sometimes shows a black window on HEVC/RTSP; Agent DVR / Frigate are the intended viewers
 - Preview is optional; recording should happen in your NVR, not on the bridge
+- Talk-back needs a camera with a speaker and Tuya two-way audio; mic-only models will not talk back. Only one talker at a time
 - Cloud PTZ needs your app email/password once if you are off the camera LAN
 
 Supported login regions: Western Europe, Eastern Europe, USA West, USA East, China, India.
@@ -155,7 +162,7 @@ or without compose:
 docker run -d --name tuya-rtsp-bridge --restart unless-stopped --network host   -v ./data:/data -v ./config:/config   ghcr.io/juanmandev/tuya-rtsp-bridge:latest
 ```
 
-Then open `http://<this-host>:8787`. Tags: `latest` (main), `1.3.0` / `1.3` (releases), `sha-<commit>`. Platforms: `linux/amd64`, `linux/arm64`.
+Then open `http://<this-host>:8787`. Tags: `latest` (main), `1.3.1` / `1.3` (releases), `sha-<commit>`. Platforms: `linux/amd64`, `linux/arm64`.
 
 ### 2. Log in
 
@@ -179,7 +186,7 @@ rtsp://127.0.0.1:8554/<CameraName>/hd
 
 From another machine on the LAN, replace `127.0.0.1` with this PC’s IP. Prefer **RTP over TCP**.
 
-Ready-made snippets: [docs/nvr.md](docs/nvr.md).
+Ready-made snippets: [docs/nvr.md](docs/nvr.md). Two-way audio: [docs/nvr.md#two-way-audio-talk-to-the-camera](docs/nvr.md#two-way-audio-talk-to-the-camera).
 
 ---
 
@@ -204,7 +211,7 @@ chmod +x launch.sh
 ./launch.sh
 ```
 
-Need Go **1.26+** only to build the engine. Release builds on Windows already include the `.exe`.
+Need Go **1.26+** only to build the engine (the Docker image uses Go 1.27). Release builds on Windows already include the `.exe`.
 
 ## Docs
 
@@ -213,7 +220,7 @@ Need Go **1.26+** only to build the engine. Release builds on Windows already in
 | [docs/why.md](docs/why.md) / [warum.md](docs/warum.md) | Why this exists (plain language) |
 | [docs/getting-started.md](docs/getting-started.md) | First run, Wi‑Fi move, PTZ |
 | [docs/faq.md](docs/faq.md) | Black VLC, empty list, “only 10 fps” |
-| [docs/nvr.md](docs/nvr.md) | Frigate, Agent DVR, go2rtc |
+| [docs/nvr.md](docs/nvr.md) | Frigate, Agent DVR, go2rtc, two-way audio |
 | [docs/architecture.md](docs/architecture.md) | How the pieces fit |
 | [docs/api.md](docs/api.md) | Local HTTP API `:8787` |
 | [docs/windows.md](docs/windows.md) | Foolproof Windows Setup.exe (Python + VLC + ffmpeg) |
