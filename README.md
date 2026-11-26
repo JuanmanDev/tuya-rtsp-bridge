@@ -46,7 +46,7 @@ Signaling still uses Tuya. When you watch from this PC, video typically stays on
 
 ## What’s new
 
-- **Two-way audio (talk to the camera) for Frigate / go2rtc** — audio from the NVR plays through the camera speaker. Works through go2rtc (identified by its `User-Agent`) and ONVIF-aware RTSP clients; VLC and Agent DVR are unaffected. Setup: [docs/nvr.md](docs/nvr.md#two-way-audio-talk-to-the-camera)
+- **Two-way audio (talk to the camera) for Frigate** — the Talk button in Frigate’s live view plays through the camera speaker. Verified with Frigate + go2rtc 1.9.14. Setup: [Talk to the camera](#talk-to-the-camera-frigate) · [docs/nvr.md](docs/nvr.md#two-way-audio-talk-to-the-camera)
 - Engine dependencies refreshed: pion/webrtc 4.2.29, paho.mqtt 1.5.2
 
 ## What’s new in this fork (1.3.0)
@@ -162,7 +162,7 @@ or without compose:
 docker run -d --name tuya-rtsp-bridge --restart unless-stopped --network host   -v ./data:/data -v ./config:/config   ghcr.io/juanmandev/tuya-rtsp-bridge:latest
 ```
 
-Then open `http://<this-host>:8787`. Tags: `latest` (main), `1.3.1` / `1.3` (releases), `sha-<commit>`. Platforms: `linux/amd64`, `linux/arm64`.
+Then open `http://<this-host>:8787`. Tags: `latest` (main), `1.3.2` / `1.3` (releases), `sha-<commit>`. Platforms: `linux/amd64`, `linux/arm64`.
 
 ### 2. Log in
 
@@ -189,6 +189,25 @@ From another machine on the LAN, replace `127.0.0.1` with this PC’s IP. Prefer
 Ready-made snippets: [docs/nvr.md](docs/nvr.md). Two-way audio: [docs/nvr.md#two-way-audio-talk-to-the-camera](docs/nvr.md#two-way-audio-talk-to-the-camera).
 
 ---
+
+## Talk to the camera (Frigate)
+
+Optional. Works with cameras that have a speaker.
+
+1. Run the bridge 1.3.2 or newer (the `latest` Docker image).
+2. In Frigate's go2rtc config, add the camera stream **without** `#backchannel=0`:
+
+   ```yaml
+   go2rtc:
+     streams:
+       CamaraEntrada:
+         - rtsp://tuya-rtsp:8554/Security_Camera/sd#tcp#timeout=30s
+   ```
+
+3. Name the Frigate camera the same as the go2rtc stream (`CamaraEntrada`).
+4. Open Frigate over **HTTPS**, go to the camera's live view and press **Talk**.
+
+Check the bridge log for `Two-way audio (backchannel) ready: audio/PCMU`. Details and troubleshooting: [docs/nvr.md](docs/nvr.md#two-way-audio-talk-to-the-camera).
 
 ## Install from source
 

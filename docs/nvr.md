@@ -39,33 +39,38 @@ See also `examples/frigate.yml`.
 
 ### Two-way audio (talk to the camera)
 
-The bridge can play audio from the NVR through the camera's speaker. It only does this for go2rtc clients (identified by their `User-Agent: go2rtc/...`) and ONVIF-aware clients that send `Require: www.onvif.org/ver20/backchannel`. Plain RTSP players such as VLC or Agent DVR get the same receive-only stream as before. To turn talk-back off for one go2rtc stream, add `#backchannel=0` to its URL.
+Verified with Frigate (bundled go2rtc 1.9.14) and bridge 1.3.2: the **Talk** button in Frigate's live view plays through the camera's speaker.
 
-Only one talker at a time: a second backchannel client writes to the same camera speaker.
+The bridge offers a sendonly G.711 track to go2rtc clients (`User-Agent: go2rtc/...`) and to ONVIF-aware clients (`Require: www.onvif.org/ver20/backchannel`). Plain players such as VLC or Agent DVR never see it. go2rtc enables talk-back by default, so **do not add `#backchannel=0`**.
+
+Setup (go2rtc inside Frigate; use the bridge's container name or IP):
 
 ```yaml
 go2rtc:
   streams:
-    living_room:
-      - rtsp://BRIDGE_IP:8554/CameraName/hd
-
-cameras:
-  living_room:
-    live:
-      stream_name: living_room   # the Talk button uses this go2rtc stream
-    ffmpeg:
-      inputs:
-        - path: rtsp://127.0.0.1:8554/living_room
-          input_args: preset-rtsp-restream
-          roles: [record, detect]
+    CamaraEntrada:
+      - rtsp://tuya-rtsp:8554/Security_Camera/sd#tcp#timeout=30s
 ```
 
-Requirements and checks:
+- The Frigate camera name must match the go2rtc stream name (`CamaraEntrada` here). Frigate then uses that stream for live view and Talk.
+- Keep your existing Frigate detect/record inputs; only the live stream needs the entry above.
+- Open Frigate over **HTTPS** (for example a reverse proxy). Browsers only allow microphone access on secure pages.
 
-- The camera must have a speaker and Tuya must expose two-way audio for it. Mic-only models will not talk back.
-- The audio is G.711 (PCMU or PCMA, 8 kHz), the same format as the camera's own audio.
-- When the camera accepts the track, the bridge log shows `Two-way audio (backchannel) ready`. If the line is missing, the camera does not support talk-back through this path.
-- The Talk button only appears in Frigate when its go2rtc stream reports a backchannel. Check your Frigate version's docs for the exact `live:` / go2rtc keys.
+Checks:
+
+1. Bridge log shows `Two-way audio (backchannel) ready: audio/PCMU` when the camera stream starts.
+2. go2rtc shows the camera producer with `audio, sendonly, PCMU/8000`.
+3. Frigate live view → **Talk** → speak. Sound comes out of the camera speaker.
+
+Troubleshooting:
+
+- No `ready` line: the camera has no speaker or Tuya does not offer two-way audio for it, or the bridge is older than 1.3.2.
+- No sendonly track in go2rtc: `#backchannel=0` is still in the URL, or the bridge is older than 1.3.2.
+- No Talk button: the page is not HTTPS, or the Frigate camera name differs from the go2rtc stream name.
+
+Limits: G.711 only (PCMU/PCMA, 8 kHz); one talker at a time; mic-only cameras cannot talk back.
+
+Home Assistant's own talk button needs Home Assistant 2026.11+ and an integration that declares two-way audio. A generic RTSP camera does not, so use Frigate for talk-back.
 
 ## go2rtc
 
