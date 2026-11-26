@@ -1,11 +1,15 @@
 # Changelog
 
-## Unreleased
+## 1.3.2
 
-- **Two-way audio for Frigate / go2rtc**: the RTSP server advertises a sendonly G.711 `/backchannel` track to go2rtc clients (`User-Agent: go2rtc/...`) and to clients that send `Require: www.onvif.org/ver20/backchannel`. The WebRTC audio sender towards the camera is bound from the negotiated answer, so it works even when the camera sends no audio. Plain RTSP players get the unchanged receive-only SDP.
-- Backchannel track access is guarded by a mutex (written by WebRTC callbacks, read by RTSP packets)
-- Engine unit tests for the SDP and backchannel negotiation (`go test ./pkg/rtsp/`)
-- Docs: Frigate / go2rtc talk-back setup in `docs/nvr.md` and `examples/frigate.yml`
+- **Two-way audio (talk to the camera) for Frigate.** The Talk button in Frigate's live view plays through the camera speaker. Verified end to end with Frigate + go2rtc 1.9.14 and a Tuya camera with speaker.
+- The RTSP server offers a sendonly G.711 `/backchannel` track to go2rtc clients (`User-Agent: go2rtc/...`) and to clients sending `Require: www.onvif.org/ver20/backchannel`. Other RTSP players keep the receive-only SDP.
+- The WebRTC audio sender towards the camera is bound from the negotiated answer, so talk works even when the camera sends no audio.
+- Backchannel state is mutex-guarded between WebRTC callbacks and RTSP packets.
+- Engine unit tests for SDP generation, client gating and the DESCRIBE path (`go test ./pkg/rtsp/`).
+- CI runs engine `go vet` and `go test`. Fixed unkeyed struct literals that failed vet on Go 1.27.
+- Dependencies: pion/webrtc 4.2.29, paho.mqtt 1.5.2 (plus indirect pion/sctp and transport).
+- Docs: talk-back setup and troubleshooting in `docs/nvr.md`, a README section, and a Frigate example in `examples/frigate.yml`.
 
 ## 1.3.1
 

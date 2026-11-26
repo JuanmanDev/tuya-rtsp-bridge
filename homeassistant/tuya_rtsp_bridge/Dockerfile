@@ -6,7 +6,7 @@ ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-debian:trixie
 ARG REPO_URL=https://github.com/JuanmanDev/tuya-rtsp-bridge.git
 ARG REPO_REF=main
 # Bump APP_VERSION on every release so Docker does not reuse a stale git clone.
-ARG APP_VERSION=1.3.1
+ARG APP_VERSION=1.3.2
 
 FROM golang:1.27-trixie AS engine
 ARG REPO_URL
