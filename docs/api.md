@@ -14,7 +14,9 @@ JSON in/out. No auth — bind is local plus LAN; do not expose `:8787` to the in
 | POST | `/api/lang` | `{ "lang": "en" \| "de" \| … }` |
 | POST | `/api/rtsp/start` `/api/rtsp/stop` | Engine |
 | POST | `/api/restart/rtsp` `/ui` `/all` | Restarts |
-| POST | `/api/ptz/move` | `{ "deviceId", "direction": "up\|down\|left\|right\|stop" }` — LAN first, cloud fallback when credentials exist |
+| POST | `/api/ptz/move` | `{ "deviceId", "direction": "up\|down\|left\|right\|upright\|upleft\|downright\|downleft\|stop" }` — LAN first, cloud fallback when credentials exist |
+| POST | `/api/ptz/config` | `{ "deviceId", "ip": "192.168.0.229", "version"?: 3.4 }` — probe & pin a camera's LAN IP (`ip: ""` clears) |
+| POST | `/onvif/*` | Built-in ONVIF Device / Media / PTZ SOAP endpoint (`profile` matches `frigateId` / `deviceId`) |
 | POST | `/api/hd-proxy/start` | Optional HLS (heavy) |
 | GET | `/api/frigate.yaml` | Generated snippet |
 

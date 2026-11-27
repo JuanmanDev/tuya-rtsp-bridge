@@ -21,6 +21,7 @@ from rtsp_manager import RtspManager
 from hd_proxy import MultiHdProxy
 from tuya_client import REGIONS, TuyaClient, safe_poll_text, slug
 from local_ptz import LocalPtz
+from onvif_server import OnvifServer
 import services
 
 from paths import tuya_data, user_data, web_dir
@@ -38,6 +39,7 @@ rtsp = RtspManager(ROOT)
 hd_proxy = MultiHdProxy()
 sd_proxy = MultiHdProxy(copy=True)
 local_ptz = LocalPtz(DATA, client)
+onvif_srv = OnvifServer(lambda: client.cameras, local_ptz, rtsp_port=rtsp.port)
 state_lock = threading.Lock()
 ui_state = {
     "phase": "idle",
@@ -64,10 +66,13 @@ def lan_ip() -> str:
 def public_state() -> dict:
     ip = lan_ip()
     login = client.login or {}
+    lan_map = local_ptz.lan_cache()
     cameras = []
     for cam in client.cameras:
-        path = cam.get("rtspPath") or f"/{cam.get('deviceId')}"
-        fid = slug(cam.get("deviceName") or cam.get("deviceId") or "cam")
+        did = cam.get("deviceId")
+        path = cam.get("rtspPath") or f"/{did}"
+        fid = slug(cam.get("deviceName") or did or "cam")
+        lan_info = lan_map.get(did or "") or {}
         cameras.append(
             {
                 **cam,
@@ -76,6 +81,9 @@ def public_state() -> dict:
                 "hlsHd": f"http://{ip}:{PORT}/live/{fid}/index.m3u8",
                 "hlsSd": f"http://{ip}:{PORT}/live/{fid}/sd/index.m3u8",
                 "frigateId": fid,
+                "ptzIp": lan_info.get("ip"),
+                "ptzVersion": lan_info.get("version"),
+                "onvifProfile": fid,
             }
         )
     with state_lock:
@@ -267,6 +275,8 @@ def frigate_yaml(state: dict) -> str:
     if not state["cameras"]:
         lines.append("  # no cameras yet")
         return "\n".join(lines) + "\n"
+    host = state.get("lanIp") or "127.0.0.1"
+    port = state.get("uiPort") or PORT
     for cam in state["cameras"]:
         cid = cam["frigateId"]
         lines += [
@@ -276,6 +286,12 @@ def frigate_yaml(state: dict) -> str:
             f"        - path: {cam['rtspHd']}",
             "          roles: [detect, record]",
             f"        # SD: {cam['rtspSd']}",
+            "    onvif:",
+            f"      host: {host}",
+            f"      port: {port}",
+            '      user: ""',
+            '      password: ""',
+            f"      profile: {cid}",
             "",
         ]
     return "\n".join(lines)
@@ -360,6 +376,20 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = urlparse(self.path).path
+        if path == "/onvif" or path.startswith("/onvif/"):
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+                raw = self.rfile.read(n) if n > 0 else b""
+                host_hdr = self.headers.get("Host") or f"{lan_ip()}:{PORT}"
+                proto = self.headers.get("X-Forwarded-Proto") or "http"
+                code, ctype, xml_body = onvif_srv.handle_http(
+                    path, raw, host_hdr, scheme=proto
+                )
+                self._text(code, xml_body, ctype)
+            except Exception as exc:
+                traceback.print_exc()
+                self._text(500, str(exc), "text/plain; charset=utf-8")
+            return
         try:
             body = self._read_json()
             if path == "/api/login/password":
@@ -392,6 +422,24 @@ class Handler(SimpleHTTPRequestHandler):
                     self._json(200, {"status": "ok", "response": res})
                 except Exception as exc:
                     self._json(500, {"error": f"PTZ: {exc}"})
+                return
+
+            if path == "/api/ptz/config":
+                device_id = str(body.get("deviceId") or "").strip()
+                if not device_id:
+                    self._json(400, {"error": "deviceId required"})
+                    return
+                ip = str(body.get("ip") or "").strip()
+                ver = body.get("version")
+                try:
+                    res = local_ptz.set_camera_ip(
+                        device_id, ip, float(ver) if ver not in (None, "") else None
+                    )
+                    self._json(200, {"status": "ok", "ptz": res, "state": public_state()})
+                except ValueError as exc:
+                    self._json(400, {"error": f"Invalid IP: {exc}"})
+                except Exception as exc:
+                    self._json(500, {"error": f"PTZ config: {exc}"})
                 return
 
             if path == "/api/cloud/auth":
@@ -540,6 +588,17 @@ def main() -> None:
 
         if cams:
             _start_streams(cams, keep_error=True)
+
+    onvif_port_raw = os.environ.get("TUYA_ONVIF_PORT", "").strip()
+    if onvif_port_raw:
+        try:
+            onvif_port = int(onvif_port_raw)
+            if onvif_port > 0 and onvif_port != PORT:
+                extra_srv = ThreadingHTTPServer((HOST, onvif_port), Handler)
+                threading.Thread(target=extra_srv.serve_forever, daemon=True, name="onvif-http").start()
+                print(f"ONVIF PTZ listener: http://127.0.0.1:{onvif_port}/onvif/device_service")
+        except Exception as exc:
+            print(f"ONVIF extra port error: {exc}")
 
     httpd = ThreadingHTTPServer((HOST, PORT), Handler)
     print(f"Tuya RTSP Bridge: http://127.0.0.1:{PORT}  (PTZ=LAN-DP 119)")

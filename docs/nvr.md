@@ -31,9 +31,22 @@ cameras:
       width: 1920
       height: 1080
       fps: 5
+    onvif:
+      host: BRIDGE_IP   # or container name e.g. tuya-rtsp
+      port: 8787
+      user: ""
+      password: ""
+      profile: CameraName
 ```
 
 Detect fps can stay at 5 even if the source is ~10. Record uses the same HD URL.
+
+### PTZ movement in Frigate (ONVIF bridge)
+
+Stock Tuya cameras do not ship ONVIF, so this bridge exposes a virtual ONVIF Device / Media / PTZ SOAP endpoint on `:8787` (`/onvif/device_service`). Every discovered camera appears as an ONVIF profile whose token/name equals its `frigateId` (e.g. `Security_Camera`).
+
+- Set `onvif.host` to the bridge host/container, `onvif.port` to `8787` (or set `TUYA_ONVIF_PORT` if you prefer another port), and `onvif.profile` to the camera's `frigateId`.
+- If the bridge runs in Docker bridge mode or across a wider subnet (e.g. `/22`), set `TUYA_LAN_SUBNETS=192.168.0.0/22` or pin the camera's LAN IP in the web UI (**Set PTZ IP**) or via `TUYA_CAMERA_IPS`.
 
 See also `examples/frigate.yml`.
 
